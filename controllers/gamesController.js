@@ -124,7 +124,14 @@ const handleDeleteGame = async (req, res) => {
     try {
         const { gameId } = req.params;
 
+        const game = await Games.findById(gameId)
+        const latestData = await LatestResult.findOne({name:game.name})
+        if(latestData){
+            await LatestResult.deleteMany({})
+        }
+
         await Games.findByIdAndDelete(gameId)
+
         return res.status(200).json({ successMsg: 'Game deleted!' });
 
     } catch (error) {
