@@ -11,7 +11,7 @@ const handleCreateNewGame = async (req, res) => {
             return res.status(400).json({ errormsg: error.array() });
         }
         const { name } = matchedData(req);
-        
+
         const sameGame = await Games.findOne({ name });
         if (sameGame) return res.status(400).json({ errorMsg: 'This game is already exists!' });
 
@@ -54,19 +54,19 @@ const handleAddGameResult = async (req, res) => {
         const game = await Games.findById(gameId);
         if (!game) return res.status(404).json({ errorMsg: 'This game not found!' });
 
-        // const today = new Date();
-        // const isResultForToday = game.results.some(result => {
-        //     const resultDate = new Date(result.date);
-        //     return (
-        //         resultDate.getDate() === today.getDate() &&
-        //         resultDate.getMonth() === today.getMonth() &&
-        //         resultDate.getFullYear() === today.getFullYear()
-        //     );
-        // });
+        const today = new Date();
+        const isResultForToday = game.results.some(result => {
+            const resultDate = new Date(result.date);
+            return (
+                resultDate.getDate() === today.getDate() &&
+                resultDate.getMonth() === today.getMonth() &&
+                resultDate.getFullYear() === today.getFullYear()
+            );
+        });
 
-        // if (isResultForToday) {
-        //     return res.status(500).json({ errorMsg: "A result already exists for today. No new entry added." });
-        // }
+        if (isResultForToday) {
+            return res.status(500).json({ errorMsg: "A result already exists for today. No new entry added." });
+        }
 
         if (game.results.length >= 365) {
             await game.results.pop()
@@ -75,15 +75,19 @@ const handleAddGameResult = async (req, res) => {
         await game.results.unshift({ data: result });
         await game.save();
 
+        const now = new Date();
+        const nextMidnight = new Date(now).setHours(24, 0, 0, 0);
+
         const latestData = await LatestResult.find();
-        if(latestData.length >= 1) {
+        if (latestData.length >= 1) {
             await LatestResult.deleteMany({})
         }
         await LatestResult.create({
-            name:game.name,
-            latestResult:[{
-                data:result
-            }]
+            name: game.name,
+            latestResult: [{
+                data: result
+            }],
+            expireAt: nextMidnight
         })
 
         return res.status(201).json({ successMsg: 'result saved.', data: game });
@@ -125,8 +129,8 @@ const handleDeleteGame = async (req, res) => {
         const { gameId } = req.params;
 
         const game = await Games.findById(gameId)
-        const latestData = await LatestResult.findOne({name:game.name})
-        if(latestData){
+        const latestData = await LatestResult.findOne({ name: game.name })
+        if (latestData) {
             await LatestResult.deleteMany({})
         }
 
@@ -145,7 +149,7 @@ const handleGetlatestresult = async (req, res) => {
     try {
         const latestData = await LatestResult.find();
 
-        return res.status(200).json({data: latestData});
+        return res.status(200).json({ data: latestData });
 
     } catch (error) {
         console.log(error);
